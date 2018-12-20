@@ -4,20 +4,23 @@ import android.app.Activity;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
-import android.view.animation.AnticipateOvershootInterpolator;
 import android.widget.FrameLayout;
-import android.widget.TextView;
+
+import java.util.List;
+
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.ChangeBounds;
+import androidx.transition.ChangeImageTransform;
+import androidx.transition.ChangeTransform;
+import androidx.transition.Fade;
 import androidx.transition.Scene;
 import androidx.transition.Transition;
-import androidx.transition.TransitionInflater;
 import androidx.transition.TransitionManager;
 import androidx.transition.TransitionSet;
 import androidx.viewpager.widget.ViewPager;
-import java.util.List;
 import ru.androidtools.transitions_example.R;
 import ru.androidtools.transitions_example.RecyclerAdapter;
 import ru.androidtools.transitions_example.ViewPageTransformer;
@@ -45,6 +48,13 @@ public class SceneActivity extends Activity {
     setupRecyclerView();
     setupViewPager();
 
+    String mainName = "MainParent";
+    ViewCompat.setTransitionName(include_recycler, mainName);
+    ViewCompat.setTransitionName(include_pager, mainName);
+    String recyclerPagerName = "Recycler/Pager";
+    ViewCompat.setTransitionName(recyclerView, recyclerPagerName);
+    ViewCompat.setTransitionName(viewPager, recyclerPagerName);
+
     list = getList();
     goRecyclerView();
   }
@@ -57,9 +67,9 @@ public class SceneActivity extends Activity {
       recyclerView.setLayoutManager(new GridLayoutManager(this, 4));
     }
     recyclerView.setHasFixedSize(true);
-    recyclerView.setItemViewCacheSize(10);
-    recyclerView.setDrawingCacheEnabled(true);
-    recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+//    recyclerView.setItemViewCacheSize(10);
+//    recyclerView.setDrawingCacheEnabled(true);
+//    recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
   }
 
   private void setupViewPager() {
@@ -70,7 +80,7 @@ public class SceneActivity extends Activity {
 
   private void goRecyclerView() {
     Scene scene = new Scene(frameLayout, include_recycler);
-    scene.enter();
+    TransitionManager.go(scene, null);
     recyclerAdapter = new RecyclerAdapter(list, new RecyclerAdapter.ClickListener() {
       @Override public void onItemClick(View view, int pos) {
         recycler_position = pos;
@@ -84,15 +94,15 @@ public class SceneActivity extends Activity {
     animated = false;
     current_view = 1;
     pagerAdapter =
-        new ViewPagerAdapter(list, recycler_position, this, new ViewPagerAdapter.PagerListener() {
-          @Override public void setStartPostTransition(View view) {
-          }
-        });
+            new ViewPagerAdapter(list, recycler_position, this, new ViewPagerAdapter.PagerListener() {
+              @Override public void setStartPostTransition(View view) {
+              }
+            });
     viewPager.setAdapter(pagerAdapter);
     viewPager.setCurrentItem(recycler_position);
-    if (recycler_position == 0) {
-      checkPagerPosition(0);
-    }
+//    if (recycler_position == 0) {
+    checkPagerPosition(recycler_position);
+//    }
   }
 
   ViewPager.OnPageChangeListener page_listener = new ViewPager.OnPageChangeListener() {
@@ -117,59 +127,47 @@ public class SceneActivity extends Activity {
   }
 
   private void animateToViewPager() {
-    RecyclerAdapter.RecyclerViewHolder holder =
-        (RecyclerAdapter.RecyclerViewHolder) recyclerView.findViewHolderForAdapterPosition(
-            recycler_position);
     Transition shared =
-        TransitionInflater.from(SceneActivity.this).inflateTransition(android.R.transition.move);
-    shared.addTarget(holder.getView().getTransitionName());
+            getShared();
+    Transition fade = new Fade();
     Scene scene = new Scene(frameLayout, include_pager);
     TransitionSet set = new TransitionSet();
     set.addTransition(shared);
-    TransitionManager.beginDelayedTransition(frameLayout, set);
-    scene.enter();
+    set.addTransition(fade);
+    TransitionManager.go(scene, set);
   }
 
   private void onDetailBack() {
     final RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
     View viewAtPosition = layoutManager.findViewByPosition(pager_position);
     if (viewAtPosition == null || layoutManager.isViewPartiallyVisible(viewAtPosition, false,
-        true)) {
+            true)) {
       layoutManager.scrollToPosition(pager_position);
-      Scene main = new Scene(frameLayout, include_pager);
-      View view = pagerAdapter.getCurrentView();
-      TextView imageView = view.findViewById(R.id.tv_item);
-      Transition shared =
-          TransitionInflater.from(SceneActivity.this).inflateTransition(android.R.transition.move);
-      shared.addTarget(imageView.getTransitionName());
-      ChangeBounds changeBounds = new ChangeBounds();
-      changeBounds.setStartDelay(300);
-      changeBounds.setInterpolator(new AnticipateOvershootInterpolator());
-      TransitionSet set = new TransitionSet();
-      set.addTransition(shared);
-      TransitionManager.beginDelayedTransition(frameLayout, set);
-      main.exit();
-    } else {
-      animateToRecyclerView();
     }
+    animateToRecyclerView();
 
     viewPager.setAdapter(null);
-    frameLayout.removeView(include_pager);
     current_view = 0;
   }
 
+  private Transition getShared() {
+    return new TransitionSet()
+            .addTransition(new ChangeBounds())
+            .addTransition(new ChangeTransform())
+            .addTransition(new ChangeImageTransform());
+  }
+
   private void animateToRecyclerView() {
-    RecyclerAdapter.RecyclerViewHolder holder =
-        (RecyclerAdapter.RecyclerViewHolder) recyclerView.findViewHolderForAdapterPosition(
-            pager_position);
     Transition shared =
-        TransitionInflater.from(SceneActivity.this).inflateTransition(android.R.transition.move);
-    shared.addTarget(holder.getView().getTransitionName());
+            getShared();
+    shared.addTarget(getString(R.string.transition_name, pager_position));
+    shared.addTarget(getString(R.string.transition_name_container, pager_position));
+    Transition fade = new Fade();
     Scene scene = new Scene(frameLayout, include_recycler);
     TransitionSet set = new TransitionSet();
     set.addTransition(shared);
-    TransitionManager.beginDelayedTransition(frameLayout, set);
-    scene.enter();
+    set.addTransition(fade);
+    TransitionManager.go(scene, set);
   }
 
   @Override public void onBackPressed() {

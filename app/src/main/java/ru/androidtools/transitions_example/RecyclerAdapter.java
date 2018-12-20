@@ -52,6 +52,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.Recycl
 
     void bind(final String text, final ClickListener listener, final int pos) {
       tv_item.setText(text);
+      card_layout.setTransitionName(tv_item.getContext().getString(R.string.transition_name_container, pos));
       tv_item.setTransitionName(tv_item.getContext().getString(R.string.transition_name, pos));
       card_layout.setOnClickListener(new View.OnClickListener() {
         @Override public void onClick(View view) {
@@ -62,6 +63,9 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.Recycl
 
     public View getView() {
       return tv_item;
+    }
+    public View getCardView() {
+      return card_layout;
     }
   }
 }
